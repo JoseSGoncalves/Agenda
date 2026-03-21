@@ -1,0 +1,6 @@
+# Deploy: arrasta a pasta `site/` para o Netlify (ou liga este repo com base = site).
+
+[[redirects]]
+  from = "/agenda"
+  to = "/agenda/"
+  status = 301

@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Agenda de serviços</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-screen__panel">
+      <div class="auth-screen__header">
+        <p class="auth-screen__eyebrow">Acesso à equipa</p>
+        <h1 class="auth-screen__title">Agenda de serviços</h1>
+        <p class="auth-screen__hint">
+          Inicia sessão com a mesma conta do portal. As marcações sincronizam na nuvem para toda a equipa.
+        </p>
+      </div>
+      <p id="authError" class="auth-screen__feedback" hidden></p>
+      <form id="authForm" class="auth-screen__form" novalidate>
+        <label class="field">
+          <span class="field__label">Email</span>
+          <input type="email" id="authEmail" autocomplete="email" required placeholder="nome@empresa.pt" />
+        </label>
+        <label class="field">
+          <span class="field__label">Palavra-passe</span>
+          <input type="password" id="authPassword" autocomplete="current-password" required placeholder="••••••••" />
+        </label>
+        <button type="button" class="btn btn--primary auth-screen__submit" id="btnEntrar">Entrar</button>
+      </form>
+    </div>
+  </div>
+
+  <span
+    id="zoneOverlapIndicator"
+    class="zone-overlap-indicator"
+    hidden
+    role="status"
+    aria-live="polite"
+    aria-label="Coincidência de zona no mesmo dia entre técnicos (até 5 km)"
+    title="Coincidência de zona no mesmo dia entre técnicos (até 5 km)"
+  ></span>
+  <div class="app" id="mainApp" hidden>
+    <header class="header">
+      <div class="header__title">
+        <h1>Agenda de serviços</h1>
+        <p class="header__subtitle">Até 8 técnicos (nomes + CP de referência opcional) · segunda a sábado · grelha 9h–18h (pausa 13h–14h) · extras nas linhas «Extra» ou por «Agendar por CP» (distâncias pelos CPs na agenda)</p>
+        <p id="localModeBanner" class="header__local-banner" hidden>Modo local: os dados ficam só neste browser neste computador (sem conta nem nuvem).</p>
+      </div>
+      <div class="header__controls">
+        <button type="button" class="btn btn--ghost" id="btnConfigTech">Técnicos</button>
+        <button type="button" class="btn btn--ghost" id="btnPrevMonth" aria-label="Mês anterior">‹</button>
+        <label class="date-field">
+          <span class="date-field__label">Mês</span>
+          <input type="month" id="monthInput" />
+        </label>
+        <button type="button" class="btn btn--ghost" id="btnNextMonth" aria-label="Mês seguinte">›</button>
+        <button type="button" class="btn btn--ghost" id="btnToday">Este mês</button>
+        <button type="button" class="btn btn--extra" id="btnScheduleByPostal">Agendar por CP</button>
+        <button type="button" class="btn btn--ghost" id="btnLogout" title="Terminar sessão">Sair</button>
+      </div>
+    </header>
+
+    <p id="agendaSyncBanner" class="sync-banner" hidden role="status" aria-live="polite"></p>
+
+    <div class="relocation-banner" id="relocationBanner" hidden role="status" aria-live="polite">
+      <div class="relocation-banner__inner">
+        <p class="relocation-banner__text">
+          Escolha na grelha o <strong>dia</strong>, <strong>técnico</strong> e <strong>slot</strong> (célula livre). Nos horários fixos, o intervalo <strong>ajusta-se</strong> à nova posição (mantém a duração); nos extras, o período mantém-se. Os dados do cliente mantêm-se.
+        </p>
+        <button type="button" class="btn btn--ghost" id="btnRelocationPickCancel">Cancelar</button>
+      </div>
+    </div>
+
+    <div class="legend">
+      <span class="legend__item"><span class="legend__swatch legend__swatch--free"></span> Livre</span>
+      <span class="legend__item"><span class="legend__swatch legend__swatch--busy"></span> Marcado</span>
+      <span class="legend__item"><span class="legend__swatch legend__swatch--extra"></span> Extra (manual)</span>
+    </div>
+
+    <details class="postal-legend">
+      <summary class="postal-legend__summary">Cores por zona de CP (4 primeiros dígitos)</summary>
+      <div class="postal-legend__grid" aria-label="Grupos de prefixos">
+        <span class="postal-legend__chip postal-zone postal-zone--g1">G1</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g2">G2</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g3">G3</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g4">G4</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g5">G5</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g6">G6</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g7">G7</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g8">G8</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g9">G9</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g10">G10</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g11">G11</span>
+        <span class="postal-legend__chip postal-zone postal-zone--g12">G12</span>
+      </div>
+    </details>
+
+    <div class="week-tabs" id="weekTabs" role="tablist" aria-label="Semanas do mês"></div>
+
+    <p class="empty-tech" id="emptyTechState" hidden>
+      Nenhum técnico com nome definido. Use <strong>Técnicos</strong> para preencher os nomes — só essas colunas aparecem na grelha.
+    </p>
+
+    <div class="table-wrap" id="tableWrap">
+      <div class="table-scroll-x">
+        <table class="grid" id="scheduleGrid" aria-label="Grade por dia e técnico">
+          <thead id="scheduleHead"></thead>
+          <tbody id="gridBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <p class="hint">Na grelha, no agendamento pode escolher duração simples, dupla, tripla ou quádrupla (1–4 slots de 1 h); o intervalo preenche os slots que intersectam (9h–13h e 14h–18h; pausa 13h–14h). Marcações extra: clique numa célula livre nas linhas «Extra» ou use «Agendar por CP» (técnico mais próximo com base nos CPs já na agenda; senão no CP de referência em «Técnicos»). Aparelho a gás: obrigatório um técnico autorizado — João Rocha ou Marcos Correia (nome na lista). Pode arrastar uma marcação ou usar «Alterar posição na grelha». Conflito de zona (CP a ≤5 km entre técnicos no mesmo dia): bolinha vermelha a piscar na célula e indicador no canto. Ao guardar, aviso se aplicável. Na célula: processo, CP e aparelho.</p>
+  </div>
+
+  <dialog class="modal modal--booking" id="modal">
+    <form class="modal__form" id="modalForm">
+      <h2 class="modal__title" id="modalTitle">Nova marcação</h2>
+      <div class="extra-meta" id="extraMetaFields" hidden>
+        <p class="modal__hint extra-meta__hint">
+          Escolha o <strong>dia</strong>, o <strong>técnico</strong> e o <strong>período</strong> (manhã ou tarde). A marcação surge na linha «Extra» correspondente (antes do almoço ou extra de tarde).
+        </p>
+        <div class="field field--row extra-meta__row">
+          <label class="field">
+            <span class="field__label">Dia</span>
+            <input type="date" id="fieldExtraDate" />
+          </label>
+          <label class="field">
+            <span class="field__label">Técnico</span>
+            <select id="fieldExtraTech"></select>
+          </label>
+        </div>
+        <fieldset class="field extra-meta__period">
+          <legend class="field__label">Período do serviço extra</legend>
+          <div class="extra-meta__radios">
+            <label class="extra-meta__radio">
+              <input type="radio" name="extraPeriod" id="fieldExtraPeriodMorning" value="morning" checked />
+              Manhã (antes do almoço)
+            </label>
+            <label class="extra-meta__radio">
+              <input type="radio" name="extraPeriod" id="fieldExtraPeriodAfternoon" value="afternoon" />
+              Tarde
+            </label>
+          </div>
+        </fieldset>
+      </div>
+      <p class="modal__context" id="modalContext"></p>
+      <p class="modal__hint" id="timeRangeHint"></p>
+      <div class="field field--row" id="timeRangeFields">
+        <div class="field">
+          <span class="field__label">Início</span>
+          <input type="time" id="fieldTimeFrom" step="300" />
+        </div>
+        <div class="field">
+          <span class="field__label">Fim</span>
+          <input type="time" id="fieldTimeTo" step="300" />
+        </div>
+      </div>
+      <fieldset class="field field--slot-span" id="fieldSlotSpanGroup" hidden>
+        <legend class="field__label">Duração (slots de 1 h)</legend>
+        <p class="field__hint field__hint--slot-span" id="slotSpanHint">
+          O primeiro slot é o da linha em que clicou; duplo/triplo/quádruplo ocupam as horas seguintes sem atravessar a pausa 13h–14h.
+        </p>
+        <div class="slot-span__radios">
+          <label class="slot-span__radio">
+            <input type="radio" name="slotSpan" value="1" checked />
+            Simples (1 h)
+          </label>
+          <label class="slot-span__radio">
+            <input type="radio" name="slotSpan" value="2" />
+            Duplo (2 h)
+          </label>
+          <label class="slot-span__radio">
+            <input type="radio" name="slotSpan" value="3" />
+            Triplo (3 h)
+          </label>
+          <label class="slot-span__radio">
+            <input type="radio" name="slotSpan" value="4" />
+            Quádruplo (4 h)
+          </label>
+        </div>
+      </fieldset>
+      <label class="field">
+        <span class="field__label">Número de processo</span>
+        <input type="text" id="fieldProcess" name="processNo" required autocomplete="off" placeholder="Ex.: 2025/1234" />
+      </label>
+      <label class="field">
+        <span class="field__label">Nome do cliente</span>
+        <input type="text" id="fieldClientName" name="clientName" required autocomplete="name" placeholder="Nome completo" />
+      </label>
+      <label class="field">
+        <span class="field__label">Telefone</span>
+        <input type="tel" id="fieldPhone" name="phone" required autocomplete="tel" placeholder="Telemóvel ou fixo" />
+      </label>
+      <label class="field">
+        <span class="field__label">Código postal</span>
+        <input
+          type="text"
+          class="postal-input"
+          id="fieldPostal"
+          name="postalCode"
+          required
+          inputmode="numeric"
+          autocomplete="postal-code"
+          placeholder="1234-567"
+          maxlength="8"
+          pattern="[0-9]{4}-[0-9]{3}"
+          title="Formato português: 4 dígitos, hífen, 3 dígitos (ex.: 1000-001)"
+        />
+      </label>
+      <label class="field">
+        <span class="field__label">Aparelho</span>
+        <input type="text" id="fieldDevice" name="device" required autocomplete="off" placeholder="Modelo ou tipo de aparelho" />
+      </label>
+      <label class="field">
+        <span class="field__label">Observações</span>
+        <textarea id="fieldObservations" name="observations" rows="3" placeholder="Notas adicionais (opcional)"></textarea>
+      </label>
+      <div class="modal__actions">
+        <button type="button" class="btn btn--danger" id="btnDelete" hidden>Cancelar marcação</button>
+        <button type="button" class="btn btn--ghost" id="btnRelocateBooking" hidden>Alterar posição na grelha…</button>
+        <div class="modal__actions-right">
+          <button type="button" class="btn btn--ghost" id="btnClose">Fechar</button>
+          <button type="submit" class="btn btn--primary" id="btnSave">Guardar</button>
+        </div>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="zone-warning" id="zoneWarningDialog" aria-describedby="zoneWarningText" role="alertdialog">
+    <div class="zone-warning__panel">
+      <p class="zone-warning__text" id="zoneWarningText"></p>
+      <p class="zone-warning__question" id="zoneWarningQuestion">
+        Deseja <strong>manter</strong> a marcação neste dia e técnico (slot selecionado), ou <strong>alterar</strong> para outro dia/técnico?
+      </p>
+      <div class="zone-warning__actions">
+        <button type="button" class="zone-warning__btn zone-warning__btn--alt" id="btnZoneWarningChange">Alterar</button>
+        <button type="button" class="zone-warning__btn zone-warning__btn--keep" id="btnZoneWarningKeep">Manter</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal modal--confirm" id="relocationConfirmDialog" aria-labelledby="relocationConfirmTitle">
+    <div class="modal__form">
+      <h2 class="modal__title" id="relocationConfirmTitle">Confirmar alteração</h2>
+      <p class="modal__context" id="relocationConfirmText"></p>
+      <div class="modal__actions modal__actions--end">
+        <button type="button" class="btn btn--ghost" id="btnRelocationConfirmCancel">Não</button>
+        <button type="button" class="btn btn--primary" id="btnRelocationConfirmOk">Sim, confirmar</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog class="modal modal--wide" id="dialogScheduleByPostal">
+    <form class="modal__form" id="formScheduleByPostal">
+      <h2 class="modal__title">Agendar por código postal</h2>
+      <p class="modal__context">
+        Indique o CP do local do serviço. O assistente procura <strong>marcações já agendadas</strong> a ≤5 km; se existirem, sugere o técnico e horário (preferindo slots normais 9h–13h e 14h–18h; se só houver extra, avisa). Se não houver ninguém na zona, sugere o técnico mais próximo com a distância; acima de 10 km sugere <strong>nova rota</strong> noutro dia.
+      </p>
+      <label class="field">
+        <span class="field__label">Código postal do serviço</span>
+        <input
+          type="text"
+          class="postal-input"
+          id="fieldWizardPostal"
+          inputmode="numeric"
+          autocomplete="postal-code"
+          placeholder="1234-567"
+          maxlength="8"
+          required
+        />
+      </label>
+      <label class="field field--checkbox">
+        <input type="checkbox" id="fieldWizardGas" />
+        <span>Aparelho a gás — obrigatório um técnico autorizado: <strong>João Rocha</strong> ou <strong>Marcos Correia</strong> (nome na lista «Técnicos»); zona próxima ou nova rota.</span>
+      </label>
+      <div id="wizardTechResults" class="wizard-tech-results" hidden></div>
+      <div class="modal__actions modal__actions--wrap">
+        <button type="button" class="btn btn--ghost" id="btnWizardClose">Fechar</button>
+        <button type="button" class="btn btn--primary" id="btnWizardSearch">Procurar técnico</button>
+        <button type="button" class="btn btn--primary" id="btnWizardContinue" hidden>Continuar para marcação</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog class="modal modal--wide" id="configModal">
+    <form class="modal__form" id="configForm">
+      <h2 class="modal__title">Técnicos</h2>
+      <p class="modal__context">Nome e, opcionalmente, <strong>código postal de referência</strong> (fallback em «Agendar por CP» quando ainda não há CPs desse técnico na agenda). Aparelhos a gás: apenas <strong>João Rocha</strong> ou <strong>Marcos Correia</strong>.</p>
+      <div class="field">
+        <label class="field">
+          <span class="field__label">Chave API Google Maps (opcional)</span>
+          <input
+            type="password"
+            id="fieldGoogleMapsApiKey"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="Maps JavaScript API (mesma chave)"
+          />
+        </label>
+        <p class="modal__hint">
+          Na <a href="https://console.cloud.google.com/google/maps-apis" rel="noopener noreferrer" target="_blank">Google Cloud</a> activa a <strong>Maps JavaScript API</strong> (e facturação). A app usa o SDK no browser (Geocoder + distância por estrada); pedidos REST directos não funcionam aqui por CORS. Sem chave: OpenStreetMap + linha recta. Se mudares a chave, recarrega a página (F5).
+        </p>
+      </div>
+      <div class="tech-names" id="techNamesFields"></div>
+      <div class="modal__actions modal__actions--end">
+        <button type="button" class="btn btn--ghost" id="btnConfigClose">Cancelar</button>
+        <button type="submit" class="btn btn--primary">Guardar nomes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="../config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

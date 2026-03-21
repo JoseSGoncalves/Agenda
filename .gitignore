@@ -1,0 +1,6 @@
+.DS_Store
+
+# Credenciais — copia config.example.js para config.js localmente.
+# Para o deploy funcionar, faz commit do config.js (git add -f config.js) ou
+# gera o ficheiro no CI com os valores certos.
+config.js
